@@ -4,7 +4,8 @@ on:
   workflow_run:
     workflows: [Prepare release]
     types: [completed]
-    branches: [main]
+    # The source run reports the PR's head branch, even after merging to main.
+    # Prepare release already restricts its trigger to PRs targeting main.
 
 permissions: {}
 
