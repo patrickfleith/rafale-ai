@@ -1,0 +1,38 @@
+[project]
+name = "rafale-ai"
+version = "0.1.0"
+description = "AI for defense."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Patrick Fleith" }
+]
+requires-python = ">=3.12"
+dependencies = []
+keywords = ["ai", "defense", "machine-learning"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Repository = "https://github.com/OWNER/rafale-ai"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.8"]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
