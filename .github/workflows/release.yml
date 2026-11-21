@@ -1,60 +1,54 @@
 name: Release to PyPI
 
 on:
-  pull_request_target:
+  workflow_run:
+    workflows: [Prepare release]
+    types: [completed]
     branches: [main]
-    types: [closed]
-
-# Keep every merged PR queued rather than replacing pending releases.
-concurrency:
-  group: pypi-release
-  queue: max
 
 permissions: {}
 
 jobs:
-  build:
-    if: github.event.pull_request.merged == true
+  artifacts:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request_target'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      actions: read
+    outputs:
+      id: ${{ steps.dist.outputs.id }}
     steps:
-      # Only execute code already merged into main, including for fork PRs.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-        with:
-          version: "0.13.7"
-          python-version: "3.12"
-          enable-cache: false
-
-      - name: Bump, validate, and tag release
+      # Closed, unmerged PRs have a successful skipped build and no dist artifact.
+      - name: Find distributions from the completed preparation run
+        id: dist
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: bash .github/scripts/prepare-release.sh
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: dist
-          path: dist/*
-          if-no-files-found: error
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          artifact_id=$(gh api "repos/${GH_REPO}/actions/runs/${RUN_ID}/artifacts" \
+            --jq '.artifacts[] | select(.name == "dist" and .expired == false) | .id')
+          echo "id=${artifact_id}" >> "$GITHUB_OUTPUT"
 
   publish:
-    needs: build
+    needs: artifacts
+    if: needs.artifacts.outputs.id != ''
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/project/rafale-ai/
     permissions:
+      actions: read
       id-token: write
     steps:
+      # Download only this run's artifacts; never execute code from a PR branch.
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: dist
+          artifact-ids: ${{ needs.artifacts.outputs.id }}
           path: dist/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
 
       - name: Publish with PyPI Trusted Publishing
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
